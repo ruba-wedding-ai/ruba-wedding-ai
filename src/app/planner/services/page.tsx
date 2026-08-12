@@ -23,7 +23,7 @@ const services: ServiceItem[] = [
   {
     id: "videography",
     title: "Videography",
-    description: "Create beautiful films you'll remember for years.",
+    description: "Create beautiful films you’ll remember for years.",
     icon: "🎥",
   },
   {
@@ -42,32 +42,20 @@ const services: ServiceItem[] = [
 
 export default function PlannerServicesPage() {
   const router = useRouter();
-  const [selectedServices, setSelectedServices] = useState<string[]>([]);
-  const [error, setError] = useState(""
-  );
-  const [isReady, setIsReady] = useState(false);
+  const [selectedServices, setSelectedServices] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = sessionStorage.getItem(servicesStorageKey);
+      return raw ? (JSON.parse(raw) as string[]) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [error, setError] = useState("");
+  const [isReady] = useState<boolean>(typeof window !== "undefined");
 
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const saved = sessionStorage.getItem(servicesStorageKey);
-    if (saved) {
-      try {
-        setSelectedServices(JSON.parse(saved));
-      } catch {
-        // ignore invalid saved data
-      }
-    }
-
-    setIsReady(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isReady || typeof window === "undefined") {
-      return;
-    }
+    if (!isReady || typeof window === "undefined") return;
     sessionStorage.setItem(servicesStorageKey, JSON.stringify(selectedServices));
   }, [selectedServices, isReady]);
 
@@ -150,7 +138,7 @@ export default function PlannerServicesPage() {
               What do you need for your wedding?
             </h2>
             <p className="mt-6 max-w-xl text-lg leading-8 text-[#6d5d55]">
-              Choose the services you'd like help finding. You can select more than one.
+              Choose the services you’d like help finding. You can select more than one.
             </p>
 
             <div className="mt-10 rounded-[2rem] border border-[#eaded7] bg-white p-6 shadow-sm sm:p-8">

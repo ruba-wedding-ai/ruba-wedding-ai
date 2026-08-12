@@ -8,96 +8,7 @@ const professionalsStorageKey = "rubaWeddingProfessionals";
 
 type ServiceId = "photography" | "videography" | "dj-music" | "beauty";
 
-type Professional = {
-  id: string;
-  name: string;
-  category: ServiceId;
-  description: string;
-  location: string;
-  startingPrice: string;
-  rating: number;
-  reviews: number;
-};
-
-const professionals: Professional[] = [
-  {
-    id: "10k-studio-photo",
-    name: "10K Studio",
-    category: "photography",
-    description: "Elegant wedding photography with beautiful storytelling and refined portraits.",
-    location: "Cairo, Egypt",
-    startingPrice: "Starting from 11,000 EGP",
-    rating: 4.9,
-    reviews: 124,
-  },
-  {
-    id: "digital-team-photo",
-    name: "Digital Team",
-    category: "photography",
-    description: "Authentic wedding moments captured with a warm, modern signature style.",
-    location: "Cairo, Egypt",
-    startingPrice: "Starting from 9,500 EGP",
-    rating: 4.8,
-    reviews: 87,
-  },
-  {
-    id: "luna-studio-photo",
-    name: "Luna Studio",
-    category: "photography",
-    description: "Soft, luxurious wedding photography with an emphasis on emotion and light.",
-    location: "Cairo, Egypt",
-    startingPrice: "Starting from 10,000 EGP",
-    rating: 4.8,
-    reviews: 65,
-  },
-  {
-    id: "10k-studio-video",
-    name: "10K Studio",
-    category: "videography",
-    description: "Cinematic wedding films that keep the emotion of your day alive for years.",
-    location: "Cairo, Egypt",
-    startingPrice: "Starting from 11,000 EGP",
-    rating: 4.9,
-    reviews: 112,
-  },
-  {
-    id: "digital-team-video",
-    name: "Digital Team",
-    category: "videography",
-    description: "Beautiful wedding videography with a cinematic eye and refined editing.",
-    location: "Cairo, Egypt",
-    startingPrice: "Starting from 9,500 EGP",
-    rating: 4.8,
-    reviews: 94,
-  },
-  {
-    id: "dj-mj",
-    name: "DJ MJ",
-    category: "dj-music",
-    description: "A stylish DJ experience that keeps your celebration energized and joyful.",
-    location: "Cairo, Egypt",
-    startingPrice: "Starting from 5,000 EGP",
-    rating: 4.7,
-    reviews: 73,
-  },
-  {
-    id: "ruba-beauty",
-    name: "Ruba Beauty",
-    category: "beauty",
-    description: "Luxury bridal beauty with elegant makeup and styling for your wedding day.",
-    location: "Cairo, Egypt",
-    startingPrice: "Starting from 3,000 EGP",
-    rating: 4.9,
-    reviews: 58,
-  },
-];
-
-const categoryLabels: Record<ServiceId, string> = {
-  photography: "Photography",
-  videography: "Videography",
-  "dj-music": "DJ & Music",
-  beauty: "Beauty & Makeup",
-};
+import { providers as allProviders, categoryLabels, Provider } from "../../../data/providers";
 
 const categoryIcons: Record<ServiceId, string> = {
   photography: "📷",
@@ -120,37 +31,29 @@ function formatDateLabel(dateString: string) {
 
 export default function PlannerDatePage() {
   const router = useRouter();
-  const [selectedDate, setSelectedDate] = useState("");
-  const [selectedProfessionals, setSelectedProfessionals] = useState<Record<ServiceId, string>>({});
-  const [isReady, setIsReady] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      const plannerData = sessionStorage.getItem(plannerStorageKey);
+      if (!plannerData) return "";
+      const parsed = JSON.parse(plannerData) as { weddingDate?: string };
+      return parsed.weddingDate ?? "";
+    } catch {
+      return "";
     }
+  });
 
-    const plannerData = sessionStorage.getItem(plannerStorageKey);
-    const storedProfessionals = sessionStorage.getItem(professionalsStorageKey);
-
-    if (plannerData) {
-      try {
-        const parsed = JSON.parse(plannerData) as { weddingDate?: string };
-        setSelectedDate(parsed.weddingDate ?? "");
-      } catch {
-        setSelectedDate("");
-      }
+  const [selectedProfessionals] = useState<Record<ServiceId, string>>(() => {
+    if (typeof window === "undefined") return {} as Record<ServiceId, string>;
+    try {
+      const storedProfessionals = sessionStorage.getItem(professionalsStorageKey);
+      return storedProfessionals ? (JSON.parse(storedProfessionals) as Record<ServiceId, string>) : ({} as Record<ServiceId, string>);
+    } catch {
+      return {} as Record<ServiceId, string>;
     }
+  });
 
-    if (storedProfessionals) {
-      try {
-        setSelectedProfessionals(JSON.parse(storedProfessionals));
-      } catch {
-        setSelectedProfessionals({});
-      }
-    }
-
-    setIsReady(true);
-  }, []);
+  const [isReady] = useState<boolean>(typeof window !== "undefined");
 
   useEffect(() => {
     if (!isReady || typeof window === "undefined") {
@@ -171,13 +74,13 @@ export default function PlannerDatePage() {
   const selectedProfessionalDetails = useMemo(() => {
     return Object.entries(selectedProfessionals)
       .map(([category, professionalId]) => {
-        const professional = professionals.find((item) => item.id === professionalId);
+        const professional = allProviders.find((item) => item.id === professionalId);
         if (!professional) {
           return null;
         }
-        return { category: category as ServiceId, ...professional };
+        return { ...professional, category: category as ServiceId };
       })
-      .filter(Boolean) as Array<Professional & { category: ServiceId }>;
+      .filter(Boolean) as Array<Provider & { category: ServiceId }>;
   }, [selectedProfessionals]);
 
   const today = new Date().toISOString().split("T")[0];
@@ -250,9 +153,9 @@ export default function PlannerDatePage() {
             <h2 className="mt-6 text-4xl font-semibold tracking-tight sm:text-5xl">
               Choose your wedding date.
             </h2>
-            <p className="mt-6 max-w-xl text-lg leading-8 text-[#6d5d55]">
-              Let's check your preferred date and prepare your wedding team.
-            </p>
+                    <p className="mt-6 max-w-xl text-lg leading-8 text-[#6d5d55]">
+                      Let’s check your preferred date and prepare your wedding team.
+                    </p>
 
             <div className="mt-10 rounded-[2rem] border border-[#eaded7] bg-white p-6 shadow-sm sm:p-8">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -314,7 +217,7 @@ export default function PlannerDatePage() {
                   </div>
                   <div className="rounded-3xl bg-[#f7ede7] px-4 py-3 text-right text-sm text-[#5d5048]">
                     <div className="font-semibold text-[#241b18]">{professional.rating.toFixed(1)} ★</div>
-                    <div>{professional.reviews} reviews</div>
+                    <div>{professional.reviewCount} reviews</div>
                   </div>
                 </div>
 

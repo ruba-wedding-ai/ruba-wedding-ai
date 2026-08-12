@@ -6,157 +6,63 @@ import { useRouter } from "next/navigation";
 const servicesStorageKey = "rubaWeddingServices";
 const professionalsStorageKey = "rubaWeddingProfessionals";
 
-type ServiceId = "photography" | "videography" | "dj-music" | "beauty";
+import { providers as allProviders, getProviderById, categoryLabels, ServiceCategory, Provider } from "../../../data/providers";
 
-type Professional = {
-  id: string;
-  name: string;
-  category: ServiceId;
-  description: string;
-  location: string;
-  startingPrice: string;
-  rating: number;
-  reviews: number;
-  about: string;
-  services: string[];
-};
+type ServiceId = ServiceCategory;
 
-const professionals: Professional[] = [
-  {
-    id: "10k-studio-photo",
-    name: "10K Studio",
-    category: "photography",
-    description: "Elegant wedding photography with beautiful storytelling and refined portraits.",
-    location: "Cairo, Egypt",
-    startingPrice: "Starting from 11,000 EGP",
-    rating: 4.9,
-    reviews: 124,
-    about: "A premium photography studio specializing in luxury wedding celebrations across Egypt.",
-    services: ["Full-day photography", "Portrait sessions", "Album design"],
-  },
-  {
-    id: "digital-team-photo",
-    name: "Digital Team",
-    category: "photography",
-    description: "Authentic wedding moments captured with a warm, modern signature style.",
-    location: "Cairo, Egypt",
-    startingPrice: "Starting from 9,500 EGP",
-    rating: 4.8,
-    reviews: 87,
-    about: "Wedding photography crafted for couples who want elegant, natural imagery.",
-    services: ["Highlight reels", "Engagement shoot", "Photo editing"],
-  },
-  {
-    id: "luna-studio-photo",
-    name: "Luna Studio",
-    category: "photography",
-    description: "Soft, luxurious wedding photography with an emphasis on emotion and light.",
-    location: "Cairo, Egypt",
-    startingPrice: "Starting from 10,000 EGP",
-    rating: 4.8,
-    reviews: 65,
-    about: "A boutique studio offering refined wedding photography packages for intimate celebrations.",
-    services: ["Cinematic portraits", "Event coverage", "Digital delivery"],
-  },
-  {
-    id: "10k-studio-video",
-    name: "10K Studio",
-    category: "videography",
-    description: "Cinematic wedding films that keep the emotion of your day alive for years.",
-    location: "Cairo, Egypt",
-    startingPrice: "Starting from 11,000 EGP",
-    rating: 4.9,
-    reviews: 112,
-    about: "A top videography team creating elegant, story-driven wedding films.",
-    services: ["Full ceremony coverage", "Highlight films", "Drone footage"],
-  },
-  {
-    id: "digital-team-video",
-    name: "Digital Team",
-    category: "videography",
-    description: "Beautiful wedding videography with a cinematic eye and refined editing.",
-    location: "Cairo, Egypt",
-    startingPrice: "Starting from 9,500 EGP",
-    rating: 4.8,
-    reviews: 94,
-    about: "Videographers who bring your wedding story to life with a polished, modern look.",
-    services: ["Highlight reels", "Full event film", "Same-day edit"],
-  },
-  {
-    id: "dj-mj",
-    name: "DJ MJ",
-    category: "dj-music",
-    description: "A stylish DJ experience that keeps your celebration energized and joyful.",
-    location: "Cairo, Egypt",
-    startingPrice: "Starting from 5,000 EGP",
-    rating: 4.7,
-    reviews: 73,
-    about: "Experienced wedding DJs offering music direction for every moment of your day.",
-    services: ["Ceremony music", "Reception set", "Dance floor coordination"],
-  },
-  {
-    id: "ruba-beauty",
-    name: "Ruba Beauty",
-    category: "beauty",
-    description: "Luxury bridal beauty with elegant makeup and styling for your wedding day.",
-    location: "Cairo, Egypt",
-    startingPrice: "Starting from 3,000 EGP",
-    rating: 4.9,
-    reviews: 58,
-    about: "A beauty team focused on bridal radiance, soft glam, and stress-free preparation.",
-    services: ["Bridal makeup", "Hair styling", "Trial session"],
-  },
-];
-
-const categoryLabels: Record<ServiceId, string> = {
-  photography: "Photography",
-  videography: "Videography",
-  "dj-music": "DJ & Music",
-  beauty: "Beauty & Makeup",
-};
-
-const categoryDescriptions: Record<ServiceId, string> = {
+const categoryDescriptions: Partial<Record<ServiceId, string>> = {
   photography: "Capture every meaningful moment of your celebration.",
-  videography: "Create beautiful films you'll remember for years.",
+  videography: "Create beautiful films you’ll remember for years.",
   "dj-music": "Set the mood and keep your celebration moving.",
   beauty: "Find beauty professionals for your special day.",
 };
 
 export default function PlannerProfessionalsPage() {
   const router = useRouter();
-  const [selectedServices, setSelectedServices] = useState<ServiceId[]>([]);
-  const [selections, setSelections] = useState<Record<ServiceId, string>>({});
-  const [activeProfile, setActiveProfile] = useState<Professional | null>(null);
+  const [selectedServices] = useState<ServiceId[]>(() => {
+    if (typeof window === "undefined") return [];
+    const saved = sessionStorage.getItem(servicesStorageKey);
+    if (!saved) return [];
+    try {
+      return JSON.parse(saved) as ServiceId[];
+    } catch {
+      return [];
+    }
+  });
+
+  const [selections, setSelections] = useState<Record<ServiceId, string>>(() => {
+    if (typeof window === "undefined") return {} as Record<ServiceId, string>;
+    const raw = sessionStorage.getItem(professionalsStorageKey);
+    if (raw) {
+      try {
+        return JSON.parse(raw) as Record<ServiceId, string>;
+      } catch {
+        return {} as Record<ServiceId, string>;
+      }
+    }
+
+    // If no explicit selections, honour a preferred provider if present
+    try {
+      const preferred = typeof window !== "undefined" ? sessionStorage.getItem("rubaPreferredProvider") : null;
+      if (preferred) {
+        const prov = getProviderById(preferred);
+        if (prov && selectedServices.includes(prov.category)) {
+          // set initial selection for that category
+          return { [prov.category]: prov.id } as Record<ServiceId, string>;
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    return {} as Record<ServiceId, string>;
+  });
+
+  const [activeProfile, setActiveProfile] = useState<Provider | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
-  const [isReady, setIsReady] = useState(false);
+  const [isReady] = useState<boolean>(typeof window !== "undefined");
 
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const savedServices = sessionStorage.getItem(servicesStorageKey);
-    const savedSelections = sessionStorage.getItem(professionalsStorageKey);
-
-    if (savedServices) {
-      try {
-        const parsed = JSON.parse(savedServices) as ServiceId[];
-        setSelectedServices(parsed);
-      } catch {
-        setSelectedServices([]);
-      }
-    }
-
-    if (savedSelections) {
-      try {
-        setSelections(JSON.parse(savedSelections));
-      } catch {
-        setSelections({});
-      }
-    }
-
-    setIsReady(true);
-  }, []);
+  // initial state is derived from sessionStorage synchronously in constructors above
 
   useEffect(() => {
     if (!isReady || typeof window === "undefined") {
@@ -173,17 +79,16 @@ export default function PlannerProfessionalsPage() {
     router.push("/planner/services");
   }, [isReady, selectedServices, router]);
 
-  const filteredProfessionals = useMemo(
-    () => professionals.filter((item) => selectedServices.includes(item.category)),
-    [selectedServices]
-  );
+  // preferred provider handled during initial selection construction above
+
+  // `filteredProfessionals` was removed because groupedProfessionals provides category groups.
 
   const groupedProfessionals = useMemo(
     () =>
       selectedServices.reduce((acc, serviceId) => {
-        acc[serviceId] = professionals.filter((item) => item.category === serviceId);
+        acc[serviceId] = allProviders.filter((item) => item.category === serviceId);
         return acc;
-      }, {} as Record<ServiceId, Professional[]>),
+      }, {} as Record<ServiceId, Provider[]>),
     [selectedServices]
   );
 
@@ -334,7 +239,7 @@ export default function PlannerProfessionalsPage() {
                             </div>
                             <div className="text-right text-sm text-[#6d5d55]">
                               <div className="font-semibold text-[#241b18]">{professional.rating.toFixed(1)}</div>
-                              <div>{professional.reviews} reviews</div>
+                              <div>{professional.reviewCount} reviews</div>
                             </div>
                           </div>
 
@@ -413,7 +318,7 @@ export default function PlannerProfessionalsPage() {
                 <h2 className="mt-3 text-3xl font-semibold text-[#241b18]">
                   {activeProfile.category === "dj-music" ? "DJ & Music" : categoryLabels[activeProfile.category]}
                 </h2>
-                <p className="mt-3 text-sm text-[#6d5d55]">{activeProfile.location} · {activeProfile.rating.toFixed(1)} ★ · {activeProfile.reviews} reviews</p>
+                    <p className="mt-3 text-sm text-[#6d5d55]">{activeProfile.location} · {activeProfile.rating.toFixed(1)} ★ · {activeProfile.reviewCount} reviews</p>
               </div>
               <button
                 type="button"
@@ -459,14 +364,14 @@ export default function PlannerProfessionalsPage() {
                   <p className="text-sm leading-7 text-[#6d5d55]">Available for wedding celebrations in Egypt with trusted service and beautiful presentation.</p>
                 </div>
 
-                <div className="space-y-4 rounded-[1.75rem] bg-white p-5">
+                  <div className="space-y-4 rounded-[1.75rem] bg-white p-5">
                   <div className="flex items-center justify-between text-sm text-[#6d5d55]">
                     <span>Rating</span>
                     <span>{activeProfile.rating.toFixed(1)} ★</span>
                   </div>
                   <div className="flex items-center justify-between text-sm text-[#6d5d55]">
                     <span>Reviews</span>
-                    <span>{activeProfile.reviews}</span>
+                    <span>{activeProfile.reviewCount}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm text-[#6d5d55]">
                     <span>Location</span>

@@ -52,31 +52,24 @@ const budgets = [
   "20,000–40,000 EGP",
   "40,000–60,000 EGP",
   "60,000+ EGP",
-  "I don't know yet",
+  "I don’t know yet",
 ];
 
 export default function PlannerPage() {
   const router = useRouter();
-  const [form, setForm] = useState<PlannerFormState>(initialFormState);
+  const [form, setForm] = useState<PlannerFormState>(() => {
+    if (typeof window === "undefined") return initialFormState;
+    try {
+      const raw = sessionStorage.getItem(storageKey);
+      if (!raw) return initialFormState;
+      const parsed = JSON.parse(raw) as Partial<PlannerFormState>;
+      return { ...initialFormState, ...parsed } as PlannerFormState;
+    } catch {
+      return initialFormState;
+    }
+  });
   const [errors, setErrors] = useState<FormErrors>({});
-  const [isReady, setIsReady] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const saved = sessionStorage.getItem(storageKey);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved) as PlannerFormState;
-        setForm((current) => ({ ...current, ...parsed }));
-      } catch {
-        // ignore malformed data
-      }
-    }
-    setIsReady(true);
-  }, []);
+  const [isReady, _setIsReady] = useState<boolean>(typeof window !== "undefined");
 
   useEffect(() => {
     if (!isReady || typeof window === "undefined") {
@@ -116,7 +109,7 @@ export default function PlannerPage() {
     }
 
     if (!form.partnerName.trim()) {
-      nextErrors.partnerName = "Please enter your partner's name.";
+      nextErrors.partnerName = "Please enter your partner’s name.";
     }
 
     if (!form.weddingDate) {
@@ -202,12 +195,8 @@ export default function PlannerPage() {
             <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#95634d]">
               Let’s get started
             </p>
-            <h2 className="mt-6 text-4xl font-semibold tracking-tight sm:text-5xl">
-              Let's start planning your wedding.
-            </h2>
-            <p className="mt-6 max-w-xl text-lg leading-8 text-[#6d5d55]">
-              Tell us a little about your celebration and we'll help you build your perfect wedding team.
-            </p>
+            <h2 className="mt-6 text-4xl font-semibold tracking-tight sm:text-5xl">Let’s start planning your wedding.</h2>
+            <p className="mt-6 max-w-xl text-lg leading-8 text-[#6d5d55]">Tell us a little about your celebration and we’ll help you build your perfect wedding team.</p>
 
             <div className="mt-10 grid gap-6 rounded-[2rem] border border-[#eaded7] bg-white p-6 shadow-sm sm:p-8">
               <div className="space-y-3">
@@ -254,13 +243,13 @@ export default function PlannerPage() {
                 </label>
 
                 <label className="space-y-2 text-sm font-medium text-[#493b35]">
-                  Partner's name
+                  Partner’s name
                   <input
                     type="text"
                     value={form.partnerName}
                     onChange={(event) => setField("partnerName", event.target.value)}
                     className="w-full rounded-3xl border border-[#ddd1c7] bg-[#fcf8f5] px-4 py-3 text-sm text-[#241b18] outline-none transition focus:border-[#95634d] focus:ring-2 focus:ring-[#95634d]/20"
-                    placeholder="Enter partner's name"
+                    placeholder="Enter partner’s name"
                   />
                   {errors.partnerName && <p className="text-sm text-[#b45037]">{errors.partnerName}</p>}
                 </label>

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { providers as allProviders, categoryLabels, Provider } from "../../../data/providers";
 
 const plannerStorageKey = "rubaWeddingPlanner";
 const servicesStorageKey = "rubaWeddingServices";
@@ -21,75 +22,49 @@ type PlannerFormState = {
 
 type ServiceId = "photography" | "videography" | "dj-music" | "beauty";
 
-type Professional = {
-  id: string;
-  name: string;
-  category: ServiceId;
-  description?: string;
-  location?: string;
-  startingPrice?: string;
-  rating?: number;
-};
-
-const servicesList: { id: ServiceId; title: string }[] = [
-  { id: "photography", title: "Photography" },
-  { id: "videography", title: "Videography" },
-  { id: "dj-music", title: "DJ & Music" },
-  { id: "beauty", title: "Beauty & Makeup" },
-];
-
-const professionalsData: Professional[] = [
-  { id: "10k-studio-photo", name: "10K Studio", category: "photography", location: "Cairo, Egypt", startingPrice: "Starting from 11,000 EGP", rating: 4.9 },
-  { id: "digital-team-photo", name: "Digital Team", category: "photography", location: "Cairo, Egypt", startingPrice: "Starting from 9,500 EGP", rating: 4.8 },
-  { id: "luna-studio-photo", name: "Luna Studio", category: "photography", location: "Cairo, Egypt", startingPrice: "Starting from 10,000 EGP", rating: 4.8 },
-  { id: "10k-studio-video", name: "10K Studio", category: "videography", location: "Cairo, Egypt", startingPrice: "Starting from 11,000 EGP", rating: 4.9 },
-  { id: "digital-team-video", name: "Digital Team", category: "videography", location: "Cairo, Egypt", startingPrice: "Starting from 9,500 EGP", rating: 4.8 },
-  { id: "dj-mj", name: "DJ MJ", category: "dj-music", location: "Cairo, Egypt", startingPrice: "Starting from 5,000 EGP", rating: 4.7 },
-  { id: "ruba-beauty", name: "Ruba Beauty", category: "beauty", location: "Cairo, Egypt", startingPrice: "Starting from 3,000 EGP", rating: 4.9 },
-];
-
-const categoryLabels: Record<ServiceId, string> = {
-  photography: "Photography",
-  videography: "Videography",
-  "dj-music": "DJ & Music",
-  beauty: "Beauty & Makeup",
-};
-
 export default function PlannerReviewPage() {
   const router = useRouter();
-  const [isReady, setIsReady] = useState(false);
-  const [plannerData, setPlannerData] = useState<PlannerFormState>({});
-  const [selectedServices, setSelectedServices] = useState<ServiceId[]>([]);
-  const [selectedProfessionals, setSelectedProfessionals] = useState<Record<string, string>>({});
+  const [isReady] = useState<boolean>(typeof window !== "undefined");
+  const [plannerData] = useState<PlannerFormState>(() => {
+    if (typeof window === "undefined") return {} as PlannerFormState;
+    try {
+      const raw = sessionStorage.getItem(plannerStorageKey);
+      return raw ? (JSON.parse(raw) as PlannerFormState) : ({} as PlannerFormState);
+    } catch {
+      return {} as PlannerFormState;
+    }
+  });
+  const [selectedServices] = useState<ServiceId[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = sessionStorage.getItem(servicesStorageKey);
+      return raw ? (JSON.parse(raw) as ServiceId[]) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [selectedProfessionals] = useState<Record<string, string>>(() => {
+    if (typeof window === "undefined") return {} as Record<string, string>;
+    try {
+      const raw = sessionStorage.getItem(professionalsStorageKey);
+      return raw ? (JSON.parse(raw) as Record<string, string>) : ({} as Record<string, string>);
+    } catch {
+      return {} as Record<string, string>;
+    }
+  });
   const [error, setError] = useState<string | null>(null);
   const [successRequestId, setSuccessRequestId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    try {
-      const plannerRaw = sessionStorage.getItem(plannerStorageKey);
-      const servicesRaw = sessionStorage.getItem(servicesStorageKey);
-      const prosRaw = sessionStorage.getItem(professionalsStorageKey);
-
-      if (plannerRaw) setPlannerData(JSON.parse(plannerRaw));
-      if (servicesRaw) setSelectedServices(JSON.parse(servicesRaw));
-      if (prosRaw) setSelectedProfessionals(JSON.parse(prosRaw));
-    } catch (e) {
-      // ignore
-    }
-
-    setIsReady(true);
-  }, []);
+  // initial state is derived from sessionStorage above; no effect needed
 
   const selectedProfessionalDetails = useMemo(() => {
     return Object.entries(selectedProfessionals)
-      .map(([category, professionalId]) => {
-        const professional = professionalsData.find((p) => p.id === professionalId);
+      .map(([, professionalId]) => {
+        const professional = allProviders.find((p) => p.id === professionalId);
         if (!professional) return null;
-        return { ...professional } as Professional;
+        return { ...professional } as Provider;
       })
-      .filter(Boolean) as Professional[];
+      .filter(Boolean) as Provider[];
   }, [selectedProfessionals]);
 
   const handleSend = () => {
@@ -97,7 +72,7 @@ export default function PlannerReviewPage() {
 
     // Validate required planner fields
     if (!plannerData.name || !plannerData.partnerName) {
-      setError("Please complete your couple's names in Wedding Details.");
+      setError("Please complete your couple\u2019s names in Wedding Details.");
       return;
     }
 
@@ -148,7 +123,7 @@ export default function PlannerReviewPage() {
       sessionStorage.setItem(requestsStorageKey, JSON.stringify(existing));
       sessionStorage.setItem("rubaWeddingLatestRequestId", id);
       setSuccessRequestId(id);
-    } catch (e) {
+    } catch {
       setError("Failed to save request. Please try again.");
       return;
     }
@@ -231,7 +206,7 @@ export default function PlannerReviewPage() {
           <div className="rounded-[2rem] bg-[#f6ece5] p-8 shadow-sm sm:p-10">
             <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#95634d]">Review</p>
             <h2 className="mt-6 text-4xl font-semibold tracking-tight sm:text-5xl">Your wedding plan is ready.</h2>
-            <p className="mt-6 max-w-xl text-lg leading-8 text-[#6d5d55]">Review your details before we send your request to the professionals you've selected.</p>
+            <p className="mt-6 max-w-xl text-lg leading-8 text-[#6d5d55]">Review your details before we send your request to the professionals you’ve selected.</p>
 
             <div className="mt-10 rounded-[2rem] border border-[#eaded7] bg-white p-6 shadow-sm sm:p-8">
               <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#95634d]">Final check</p>

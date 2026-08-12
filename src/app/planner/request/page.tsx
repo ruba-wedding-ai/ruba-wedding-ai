@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 const requestsStorageKey = "rubaWeddingRequests";
@@ -25,29 +25,21 @@ type SavedRequest = {
 
 export default function PlannerRequestPage() {
   const router = useRouter();
-  const [request, setRequest] = useState<SavedRequest | null>(null);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  const [request] = useState<SavedRequest | null>(() => {
+    if (typeof window === "undefined") return null;
     try {
       const latestId = sessionStorage.getItem(latestRequestIdKey);
       const raw = sessionStorage.getItem(requestsStorageKey);
-      if (!raw) {
-        setRequest(null);
-        return;
-      }
+      if (!raw) return null;
       const list = JSON.parse(raw) as SavedRequest[];
       if (latestId) {
-        const found = list.find((r) => r.id === latestId) ?? null;
-        setRequest(found);
-      } else {
-        // fallback to last item
-        setRequest(list[list.length - 1] ?? null);
+        return list.find((r) => r.id === latestId) ?? null;
       }
-    } catch (e) {
-      setRequest(null);
+      return list[list.length - 1] ?? null;
+    } catch {
+      return null;
     }
-  }, []);
+  });
 
   return (
     <main className="min-h-screen bg-[#fcf8f5] text-[#241b18]">
@@ -143,7 +135,7 @@ export default function PlannerRequestPage() {
             ) : (
               <div className="text-center">
                 <h2 className="text-xl font-semibold">No request found</h2>
-                <p className="mt-2 text-sm text-[#6d5d55]">We couldn't find a submitted request. Please complete the planner to create a request.</p>
+                <p className="mt-2 text-sm text-[#6d5d55]">We couldn’t find a submitted request. Please complete the planner to create a request.</p>
               </div>
             )}
 
