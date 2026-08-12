@@ -116,7 +116,7 @@ export default function Home() {
             <div className="mt-9 flex flex-col gap-4 sm:flex-row">
               <a
                 id="start"
-                href="#services"
+                href="/planner"
                 className="rounded-full bg-[#95634d] px-8 py-4 text-center font-semibold text-white transition hover:bg-[#7f523f]"
               >
                 Start Planning Your Wedding
@@ -312,7 +312,7 @@ export default function Home() {
           </p>
 
           <a
-            href="#start"
+            href="/planner"
             className="mt-9 inline-block rounded-full bg-white px-8 py-4 font-semibold text-[#95634d] transition hover:bg-[#f8eee9]"
           >
             Start Planning
